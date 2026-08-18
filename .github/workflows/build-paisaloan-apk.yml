@@ -1,13 +1,25 @@
- name: Build PaisaLoan APK
+name: Build PaisaLoan APK
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - name: Create Android project
         run: |
           mkdir -p app/src/main/java/com/paisaloan/app
@@ -21,6 +33,7 @@ jobs:
                   gradlePluginPortal()
               }
           }
+
           dependencyResolutionManagement {
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
               repositories {
@@ -28,6 +41,7 @@ jobs:
                   mavenCentral()
               }
           }
+
           rootProject.name = "PaisaLoan"
           include ":app"
           EOF
@@ -52,7 +66,7 @@ jobs:
                   minSdk 24
                   targetSdk 35
                   versionCode 1
-                  versionName "1.0"
+                  versionName '1.0'
               }
           }
           EOF
@@ -76,11 +90,9 @@ jobs:
 
           cat > app/src/main/res/values/styles.xml <<'EOF'
           <resources>
-              <style name="AppTheme"
-                  parent="android:style/Theme.Material.Light.NoActionBar">
+              <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
                   <item name="android:fontFamily">sans</item>
-                  <item name="android:colorAccent">#315BEA</item>
-                  <item name="android:statusBarColor">#1739A5</item>
+                  <item name="android:colorAccent">#2196F3</item>
               </style>
           </resources>
           EOF
@@ -90,72 +102,42 @@ jobs:
 
           import android.app.Activity;
           import android.os.Bundle;
-          import android.widget.*;
+          import android.graphics.Color;
+          import android.widget.LinearLayout;
+          import android.widget.TextView;
 
           public class MainActivity extends Activity {
               @Override
-              public void onCreate(Bundle b) {
-                  super.onCreate(b);
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
 
-                  LinearLayout box = new LinearLayout(this);
-                  box.setOrientation(LinearLayout.VERTICAL);
-                  box.setPadding(32, 32, 32, 32);
+                  LinearLayout layout = new LinearLayout(this);
+                  layout.setOrientation(LinearLayout.VERTICAL);
+                  layout.setPadding(40, 60, 40, 40);
 
                   TextView title = new TextView(this);
                   title.setText("PaisaLoan");
                   title.setTextSize(30);
-                  title.setTextColor(0xFFFFFFFF);
-                  title.setBackgroundColor(0xFF315BEA);
-                  title.setPadding(24, 24, 24, 24);
-                  box.addView(title);
+                  title.setTextColor(Color.BLACK);
 
-                  TextView info = new TextView(this);
-                  info.setText(
-                      "\nPersonal Loan\n\n" +
-                      "Apply for a loan and check application status."
-                  );
-                  info.setTextSize(18);
-                  box.addView(info);
+                  TextView message = new TextView(this);
+                  message.setText("Personal Loan Application");
+                  message.setTextSize(18);
 
-                  Button apply = new Button(this);
-                  apply.setText("Apply for Loan");
-                  apply.setOnClickListener(v ->
-                      new AlertDialog.Builder(this)
-                          .setTitle("Loan Application")
-                          .setMessage(
-                              "Demo application. Real KYC, credit " +
-                              "check and disbursement are not connected."
-                          )
-                          .setPositiveButton("OK", null)
-                          .show()
-                  );
-                  box.addView(apply);
+                  layout.addView(title);
+                  layout.addView(message);
 
-                  Button admin = new Button(this);
-                  admin.setText("Admin Dashboard");
-                  admin.setOnClickListener(v ->
-                      new AlertDialog.Builder(this)
-                          .setTitle("Admin Dashboard")
-                          .setMessage(
-                              "New Applications\nPending\nApproved\nRejected"
-                          )
-                          .setPositiveButton("OK", null)
-                          .show()
-                  );
-                  box.addView(admin);
-
-                  setContentView(box);
+                  setContentView(layout);
               }
           }
           EOF
 
-      - name: Setup Android
-        uses: android-actions/setup-android@v3
+      - name: Setup Gradle
+        run: |
+          gradle wrapper --gradle-version 8.7
 
       - name: Build APK
         run: |
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
-          gradle wrapper --gradle-version 8.7
           chmod +x gradlew
           ./gradlew assembleDebug
 
