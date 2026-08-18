@@ -1,0 +1,166 @@
+ name: Build PaisaLoan APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create Android project
+        run: |
+          mkdir -p app/src/main/java/com/paisaloan/app
+          mkdir -p app/src/main/res/values
+
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "PaisaLoan"
+          include ":app"
+          EOF
+
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.6.1' apply false
+          }
+          EOF
+
+          cat > app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.paisaloan.app'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId 'com.paisaloan.app'
+                  minSdk 24
+                  targetSdk 35
+                  versionCode 1
+                  versionName "1.0"
+              }
+          }
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:theme="@style/AppTheme"
+                  android:label="PaisaLoan">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat > app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+              <style name="AppTheme"
+                  parent="android:style/Theme.Material.Light.NoActionBar">
+                  <item name="android:fontFamily">sans</item>
+                  <item name="android:colorAccent">#315BEA</item>
+                  <item name="android:statusBarColor">#1739A5</item>
+              </style>
+          </resources>
+          EOF
+
+          cat > app/src/main/java/com/paisaloan/app/MainActivity.java <<'EOF'
+          package com.paisaloan.app;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.widget.*;
+
+          public class MainActivity extends Activity {
+              @Override
+              public void onCreate(Bundle b) {
+                  super.onCreate(b);
+
+                  LinearLayout box = new LinearLayout(this);
+                  box.setOrientation(LinearLayout.VERTICAL);
+                  box.setPadding(32, 32, 32, 32);
+
+                  TextView title = new TextView(this);
+                  title.setText("PaisaLoan");
+                  title.setTextSize(30);
+                  title.setTextColor(0xFFFFFFFF);
+                  title.setBackgroundColor(0xFF315BEA);
+                  title.setPadding(24, 24, 24, 24);
+                  box.addView(title);
+
+                  TextView info = new TextView(this);
+                  info.setText(
+                      "\nPersonal Loan\n\n" +
+                      "Apply for a loan and check application status."
+                  );
+                  info.setTextSize(18);
+                  box.addView(info);
+
+                  Button apply = new Button(this);
+                  apply.setText("Apply for Loan");
+                  apply.setOnClickListener(v ->
+                      new AlertDialog.Builder(this)
+                          .setTitle("Loan Application")
+                          .setMessage(
+                              "Demo application. Real KYC, credit " +
+                              "check and disbursement are not connected."
+                          )
+                          .setPositiveButton("OK", null)
+                          .show()
+                  );
+                  box.addView(apply);
+
+                  Button admin = new Button(this);
+                  admin.setText("Admin Dashboard");
+                  admin.setOnClickListener(v ->
+                      new AlertDialog.Builder(this)
+                          .setTitle("Admin Dashboard")
+                          .setMessage(
+                              "New Applications\nPending\nApproved\nRejected"
+                          )
+                          .setPositiveButton("OK", null)
+                          .show()
+                  );
+                  box.addView(admin);
+
+                  setContentView(box);
+              }
+          }
+          EOF
+
+      - name: Setup Android
+        uses: android-actions/setup-android@v3
+
+      - name: Build APK
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          gradle wrapper --gradle-version 8.7
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PaisaLoan-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
